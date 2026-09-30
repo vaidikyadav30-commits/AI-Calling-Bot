@@ -1,0 +1,75 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "agent-starter-python"
+version = "1.0.0"
+description = "Simple voice AI assistant built with LiveKit Agents for Python"
+requires-python = ">=3.10, <3.15"
+
+dependencies = [
+    # Telephony control plane (src/ai_caller/telephony/api.py). The agent itself
+    # does not need these, but they ship together so one `uv sync` covers both.
+    "fastapi>=0.115",
+    "langchain-core>=1.6.1",
+    "langchain-google-genai>=4.4.0",
+    "langchain-qdrant>=1.1.0",
+    "langchain-text-splitters>=1.1.2",
+    "livekit-agents>=1.6.9",
+    "livekit-plugins-ai-coustics~=0.2",
+    "livekit-plugins-cartesia>=1.7.1",
+    "livekit-plugins-elevenlabs>=1.7.1",
+    "livekit-plugins-openai>=1.7.1",
+    "python-dotenv",
+    "uvicorn>=0.30",
+]
+
+[dependency-groups]
+dev = [
+    # httpx backs fastapi.testclient, which is how the telephony API is tested.
+    "httpx",
+    "pytest",
+    "pytest-asyncio",
+    "ruff",
+]
+
+[tool.uv]
+# yarl 1.24.1 was published with only a cp310 wheel and no sdist, so it can't
+# install on Python 3.11+. Remove this once upstream uploads the remaining wheels.
+constraint-dependencies = ["yarl<1.24"]
+
+# Console scripts on Windows are .exe shims with the interpreter path baked in.
+# Hardlinking them from the shared uv cache makes every project on this machine
+# share one shim, so `pytest` here can end up launching another project's venv.
+# Copying keeps this project's scripts pointed at this project's interpreter.
+link-mode = "copy"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-dir]
+"" = "src"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+
+[tool.ruff]
+line-length = 88
+target-version = "py39"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "N", "B", "A", "C4", "UP", "SIM", "RUF"]
+ignore = ["E501"]  # Line too long (handled by formatter)
+
+[tool.ruff.lint.per-file-ignores]
+# prompts.py carries verbatim copy that the agent reads out: curly apostrophes
+# and en dashes are the correct characters for that text. RUF001 wants them
+# replaced with ASCII, which would change the words the caller hears, so the
+# ambiguous-character rule is off for this one file rather than worked around.
+"src/ai_caller/prompts.py" = ["RUF001"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"

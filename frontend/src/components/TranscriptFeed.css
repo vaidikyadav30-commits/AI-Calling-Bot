@@ -1,0 +1,74 @@
+.transcript-feed {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  flex: 1;
+  overflow-y: auto;
+  padding: 0;
+}
+
+.transcript-feed--empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  gap: 10px;
+  color: var(--text-muted);
+  font-size: 13px;
+  padding: 40px 24px;
+}
+
+.transcript-empty-hint {
+  font-size: 11px;
+  color: var(--text-muted);
+  opacity: 0.6;
+}
+
+/* ── Bubbles ─────────────────────────────────────── */
+.transcript-bubble {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 14px 24px;
+  border-bottom: 1px solid var(--border);
+  animation: fadeIn 0.2s ease both;
+  transition: background 0.15s ease;
+}
+.transcript-bubble:hover { background: var(--bg-raised); }
+
+.transcript-bubble--user  { background: transparent; }
+.transcript-bubble--agent { background: transparent; }
+
+.transcript-role {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.transcript-bubble--user  .transcript-role { color: var(--beige-dim); }
+.transcript-bubble--agent .transcript-role { color: var(--text-muted); }
+
+.transcript-text {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text-primary);
+  word-break: break-word;
+}
+
+.transcript-bubble--streaming .transcript-text {
+  color: var(--text-secondary);
+}
+
+.typing-cursor {
+  display: inline-block;
+  width: 1.5px;
+  height: 13px;
+  background: var(--beige);
+  margin-left: 3px;
+  border-radius: 1px;
+  animation: blink 0.85s step-end infinite;
+  vertical-align: text-bottom;
+}

@@ -1,0 +1,375 @@
+/* ── App layout ──────────────────────────────────── */
+
+.room-layout {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+  animation: fadeIn 0.3s ease both;
+}
+
+/* ── Header ─────────────────────────────────────── */
+.room-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 0 24px;
+  height: 52px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.room-logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-right: auto;
+}
+
+.logo-mark {
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  background: var(--beige);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.logo-mark svg { display: block; }
+
+.logo-text {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
+}
+
+.logo-divider {
+  width: 1px;
+  height: 14px;
+  background: var(--border-light);
+}
+
+.logo-sub {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-weight: 400;
+}
+
+/* ── Status indicator ────────────────────────────── */
+.status-dot-wrap {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--text-muted);
+  animation: dot-pulse 2s ease-in-out infinite;
+}
+.status-dot.connected    { background: #4caf50; animation: none; }
+.status-dot.connecting   { background: var(--beige); }
+.status-dot.reconnecting { background: var(--danger); }
+
+/* ── Main grid ───────────────────────────────────── */
+.room-main {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  gap: 0;
+  overflow: hidden;
+  border-top: none;
+}
+
+/* ── Left panel ──────────────────────────────────── */
+.left-panel {
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--border);
+  padding: 28px 20px;
+  gap: 28px;
+  overflow-y: auto;
+}
+
+/* ── Agent orb ───────────────────────────────────── */
+.agent-orb-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.agent-orb {
+  position: relative;
+  width: 88px;
+  height: 88px;
+  border-radius: 50%;
+  border: 1px solid var(--border-light);
+  background: var(--bg-overlay);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* The ring that grows when agent speaks */
+.agent-orb::before {
+  content: '';
+  position: absolute;
+  inset: -6px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  transition: border-color 0.3s ease, inset 0.3s ease;
+}
+.agent-orb.speaking::before {
+  border-color: var(--beige-dim);
+  inset: -10px;
+}
+.agent-orb::after {
+  content: '';
+  position: absolute;
+  inset: -16px;
+  border-radius: 50%;
+  border: 1px solid transparent;
+  transition: border-color 0.3s ease, inset 0.3s ease;
+}
+.agent-orb.speaking::after {
+  border-color: rgba(200, 184, 154, 0.18);
+  inset: -20px;
+}
+
+.orb-inner {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--beige);
+  opacity: 0.15;
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+.agent-orb.speaking .orb-inner { opacity: 0.35; transform: scale(1.1); }
+.agent-orb.listening .orb-inner { opacity: 0.22; }
+.agent-orb.thinking .orb-inner {
+  opacity: 0.20;
+  animation: spin 2s linear infinite;
+  border-radius: 40%;
+}
+
+.agent-label {
+  text-align: center;
+}
+.agent-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-primary);
+  margin-bottom: 2px;
+}
+.agent-state {
+  font-size: 11px;
+  color: var(--text-muted);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+/* ── Waveform rows ───────────────────────────────── */
+.waveform-section {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.waveform-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.waveform-row-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-muted);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.waveform-row-label .active-badge {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--beige);
+  animation: dot-pulse 1.5s ease-in-out infinite;
+}
+
+/* ── Controls ────────────────────────────────────── */
+.controls-section {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.mic-btn {
+  width: 100%;
+  justify-content: flex-start;
+  gap: 10px;
+  padding: 10px 14px;
+}
+
+.mic-btn .mic-icon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  opacity: 0.6;
+}
+
+.mic-btn.muted {
+  color: #c0392b;
+  border-color: #3a1a18;
+}
+
+/* ── Right panel — Transcript ────────────────────── */
+.right-panel {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.transcript-header {
+  padding: 16px 24px 14px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.transcript-title {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-muted);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.transcript-count {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Loading state ───────────────────────────────── */
+.connecting-overlay {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  gap: 16px;
+  animation: fadeIn 0.3s ease;
+}
+
+.connecting-spinner {
+  width: 24px;
+  height: 24px;
+  border: 1.5px solid var(--border-light);
+  border-top-color: var(--beige);
+  border-radius: 50%;
+  animation: spin 0.9s linear infinite;
+}
+
+.connecting-text {
+  font-size: 13px;
+  color: var(--text-muted);
+  font-weight: 400;
+}
+
+/* ── Error toast ─────────────────────────────────── */
+.error-toast {
+  position: fixed;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 999;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  background: var(--bg-raised);
+  border: 1px solid #3a1a18;
+  border-radius: var(--radius);
+  color: #e57373;
+  font-size: 12px;
+  animation: fadeIn 0.25s ease both;
+}
+.error-toast button {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 13px;
+  padding: 0 2px;
+}
+
+/* ── App-level error banner (shown above the dialer) ── */
+.app-error {
+  padding: 10px 24px;
+  background: rgba(192, 57, 43, 0.08);
+  border-bottom: 1px solid rgba(192, 57, 43, 0.3);
+  color: #e57373;
+  font-size: 12px;
+}
+
+/* ── Call summary (monitoring a phone call) ──────── */
+.call-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px;
+  background: var(--bg-overlay);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 12px;
+}
+
+.call-summary-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.call-summary-row span:first-child {
+  color: var(--text-muted);
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.call-summary-row span:last-child {
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.call-summary-note {
+  margin-top: 4px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+  font-size: 11px;
+  color: var(--beige-dim);
+}
+
+/* ── Responsive ──────────────────────────────────── */
+@media (max-width: 680px) {
+  .room-main { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
+  .left-panel { flex-direction: row; flex-wrap: wrap; border-right: none; border-bottom: 1px solid var(--border); padding: 16px; gap: 16px; }
+  .agent-orb-section { flex-direction: row; align-items: center; }
+  .controls-section { margin-top: 0; }
+}

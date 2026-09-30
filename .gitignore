@@ -1,0 +1,58 @@
+# --- Secrets -----------------------------------------------------------------
+# Never commit a real credential. On Railway these same names are set as
+# service variables instead, so there is no file to deploy.
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# --- Python ------------------------------------------------------------------
+__pycache__
+*.py[cod]
+.venv
+venv/
+*.egg-info
+build/
+.pytest_cache
+.ruff_cache
+.mypy_cache
+
+# --- Frontend ----------------------------------------------------------------
+# dist/ is built during the Docker image build, so the repo never carries one.
+node_modules/
+frontend/dist/
+.oxlintcache
+npm-debug.log*
+
+# --- Local caches ------------------------------------------------------------
+# Model weights downloaded at runtime; the image fetches its own.
+.cache/
+
+# --- Editors and OS ----------------------------------------------------------
+.DS_Store
+Thumbs.db
+.idea
+.vscode
+KMS
+
+# Claude Code
+.claude/settings.local.json
+.claude/worktrees/
+
+# OpenAI Codex
+.codex/config.local.toml
+
+# Gemini CLI
+.gemini/history/
+.gemini/tmp/
+.gemini/google_accounts.json
+.gemini/installation_id
+.gemini/oauth_creds.json
+
+# Cursor
+.cursor/chat/
+.cursor/rules/*.local.mdc
+
+# GitHub CLI
+.github/personal-instructions.md
