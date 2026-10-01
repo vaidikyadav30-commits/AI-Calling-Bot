@@ -48,6 +48,7 @@ Rules that keep this structure honest:
 - **Integrations must fail soft.** A broken integration is logged and skipped; it must never prevent a call from connecting.
 - `config.py` must not load `.env.local` as an import side effect. Tests rely on `tests/conftest.py` doing it explicitly.
 - **`assistant.py` takes `extra_instructions` and `extra_tools`, and never inspects why.** Anything that depends on *how* a session was reached (a phone call adds call-handling rules and an `end_call` tool; a browser session adds neither) is decided in `session.py` and passed in.
+- **The job entrypoint must be picklable.** `run_session` is module-level and `create_server` registers it with `functools.partial`, never as a closure. On Linux the worker runs each job in a separate process started with `forkserver` and pickles the entrypoint to get it there; a nested function is `create_server.<locals>.entrypoint` and raises `PicklingError`, so every call connects to silence. Windows hides this — `livekit.agents` uses a THREAD job executor there and never pickles — so it passes locally and fails only once deployed. `tests/test_session.py` guards it.
 - **`telephony/api.py` is never imported by the agent.** The worker must not load FastAPI; `telephony/__init__.py` deliberately leaves it out. The same applies to `webapp.py`, which sits on top of it.
 
 ## Development and deployment are the same code

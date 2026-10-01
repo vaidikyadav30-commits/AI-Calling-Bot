@@ -9,6 +9,7 @@ other party arrives. The telephony module answers the questions that differ
 from __future__ import annotations
 
 import asyncio
+import functools
 import logging
 import time
 
@@ -93,91 +94,109 @@ def prewarm(proc: JobProcess) -> None:
     logger.info("prewarm finished in %.2fs", time.perf_counter() - started)
 
 
+async def run_session(ctx: JobContext, settings: Settings) -> None:
+    """Serve one job: a browser visitor, an inbound call, or an outbound one.
+
+    Deliberately module-level rather than nested inside ``create_server``. On
+    Linux the worker runs each job in a separate process started with
+    ``forkserver``, and the entrypoint is pickled to get it there — which a
+    closure cannot survive (``Can't pickle local object``). Windows hides this
+    entirely by running jobs in threads, so a nested entrypoint works in local
+    development and fails on every call once deployed.
+    """
+    # Time every phase. On a phone call the caller hears silence until the
+    # session starts, so when someone reports "it took a minute to answer",
+    # these numbers say which phase to blame instead of guessing.
+    started = time.perf_counter()
+
+    def since() -> float:
+        return time.perf_counter() - started
+
+    # What was this job dispatched to do: answer a call, place one, or serve
+    # a browser? Everything that follows keys off this one value.
+    dial = call_context(ctx)
+
+    # Add any other context you want in all log entries here
+    ctx.log_context_fields = {
+        "room": ctx.room.name,
+        "direction": dial.direction.value,
+        "call_id": dial.call_id,
+    }
+
+    if dial.is_phone_call:
+        # Connect first and build everything else afterwards: an inbound
+        # caller is already on the line, and every millisecond before this
+        # is silence they are paying for.
+        await ctx.connect()
+        logger.info("connected in %.2fs", since())
+
+    # A phone call whose metadata never arrived still has a SIP participant
+    # in the room. Trusting that over the metadata is what stops a missing
+    # dispatch-rule field from silently turning an inbound call into a
+    # session that waits for the caller to speak first.
+    dial = resolve_direction(ctx, dial)
+    ctx.log_context_fields["direction"] = dial.direction.value
+
+    # Built per session so a knowledge base that is down at start time can
+    # recover on the next call without restarting the worker. Off the event
+    # loop because the Qdrant client connects synchronously, which would
+    # otherwise stall the room connection we just made.
+    integrations = await asyncio.to_thread(build_integrations, settings)
+    ctx.add_shutdown_callback(lambda: close_all(integrations))
+    logger.info("integrations ready in %.2fs", since())
+
+    caller = None
+    if dial.is_outbound:
+        try:
+            caller = await dial_out(ctx, dial, settings.telephony)
+        except DialError:
+            # dial_out has already logged the reason and shut the job down.
+            return
+
+    session = build_session(settings)
+
+    await session.start(
+        agent=Assistant(
+            settings,
+            integrations,
+            extra_instructions=PHONE_INSTRUCTIONS if dial.is_phone_call else "",
+            extra_tools=call_tools(dial),
+        ),
+        room=ctx.room,
+        room_options=room_io.RoomOptions(
+            audio_input=room_io.AudioInputOptions(),
+            # On outbound, link to the callee explicitly so the session
+            # cannot attach to a supervisor who joined to listen in.
+            participant_identity=link_target(dial) or NOT_GIVEN,
+        ),
+    )
+    logger.info("session started in %.2fs", since())
+
+    if not dial.is_phone_call:
+        # Join the room and connect to the user. Done after start() so
+        # RoomIO is ready for the browser's pre-connect audio buffer.
+        await ctx.connect()
+
+    # Inbound: greet now. Outbound: only if the callee stays silent.
+    await open_conversation(
+        session,
+        dial,
+        opening_instructions(dial.is_outbound, caller_note(dial, caller)),
+    )
+
+
 def create_server(settings: Settings | None = None) -> AgentServer:
     """Build the AgentServer and register the session handler."""
     settings = settings or Settings.from_env()
     server = AgentServer(setup_fnc=prewarm)
 
-    @server.rtc_session(agent_name=settings.agent_name)
-    async def entrypoint(ctx: JobContext) -> None:
-        # Time every phase. On a phone call the caller hears silence until the
-        # session starts, so when someone reports "it took a minute to answer",
-        # these numbers say which phase to blame instead of guessing.
-        started = time.perf_counter()
-
-        def since() -> float:
-            return time.perf_counter() - started
-
-        # What was this job dispatched to do: answer a call, place one, or serve
-        # a browser? Everything that follows keys off this one value.
-        dial = call_context(ctx)
-
-        # Add any other context you want in all log entries here
-        ctx.log_context_fields = {
-            "room": ctx.room.name,
-            "direction": dial.direction.value,
-            "call_id": dial.call_id,
-        }
-
-        if dial.is_phone_call:
-            # Connect first and build everything else afterwards: an inbound
-            # caller is already on the line, and every millisecond before this
-            # is silence they are paying for.
-            await ctx.connect()
-            logger.info("connected in %.2fs", since())
-
-        # A phone call whose metadata never arrived still has a SIP participant
-        # in the room. Trusting that over the metadata is what stops a missing
-        # dispatch-rule field from silently turning an inbound call into a
-        # session that waits for the caller to speak first.
-        dial = resolve_direction(ctx, dial)
-        ctx.log_context_fields["direction"] = dial.direction.value
-
-        # Built per session so a knowledge base that is down at start time can
-        # recover on the next call without restarting the worker. Off the event
-        # loop because the Qdrant client connects synchronously, which would
-        # otherwise stall the room connection we just made.
-        integrations = await asyncio.to_thread(build_integrations, settings)
-        ctx.add_shutdown_callback(lambda: close_all(integrations))
-        logger.info("integrations ready in %.2fs", since())
-
-        caller = None
-        if dial.is_outbound:
-            try:
-                caller = await dial_out(ctx, dial, settings.telephony)
-            except DialError:
-                # dial_out has already logged the reason and shut the job down.
-                return
-
-        session = build_session(settings)
-
-        await session.start(
-            agent=Assistant(
-                settings,
-                integrations,
-                extra_instructions=PHONE_INSTRUCTIONS if dial.is_phone_call else "",
-                extra_tools=call_tools(dial),
-            ),
-            room=ctx.room,
-            room_options=room_io.RoomOptions(
-                audio_input=room_io.AudioInputOptions(),
-                # On outbound, link to the callee explicitly so the session
-                # cannot attach to a supervisor who joined to listen in.
-                participant_identity=link_target(dial) or NOT_GIVEN,
-            ),
-        )
-        logger.info("session started in %.2fs", since())
-
-        if not dial.is_phone_call:
-            # Join the room and connect to the user. Done after start() so
-            # RoomIO is ready for the browser's pre-connect audio buffer.
-            await ctx.connect()
-
-        # Inbound: greet now. Outbound: only if the callee stays silent.
-        await open_conversation(
-            session,
-            dial,
-            opening_instructions(dial.is_outbound, caller_note(dial, caller)),
-        )
-
+    # partial() rather than a closure: both the function and the bound
+    # Settings pickle, so the whole entrypoint survives the trip to a job
+    # process. Binding the settings here also keeps the worker and its job
+    # processes on exactly one configuration instead of each re-reading the
+    # environment and potentially disagreeing.
+    server.rtc_session(
+        functools.partial(run_session, settings=settings),
+        agent_name=settings.agent_name,
+    )
     return server
