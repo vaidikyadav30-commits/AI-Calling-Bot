@@ -19,8 +19,14 @@ def _judge_llm() -> llm.LLM:
     Caveat: the judge and the agent are the same model family, so these evals
     check that behavior matches the stated intent, not that the model is
     correct in some independent sense.
+
+    These evals call a real model, so they need a real key. Skipping without
+    one keeps a credential-less checkout — CI on a fork, or a fresh clone —
+    reporting the offline suite honestly instead of failing on configuration.
     """
     settings = Settings.from_env().llm
+    if not settings.api_key:
+        pytest.skip("DEEPSEEK_API_KEY is not set, so the judge model is unavailable.")
     # Temperature 0 so a judgement doesn't flip between runs.
     return build_llm(replace(settings, temperature=0.0))
 

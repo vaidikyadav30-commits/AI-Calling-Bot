@@ -26,9 +26,17 @@ jobs:
     - name: Install dependencies
       run: UV_GIT_LFS=1 uv sync --dev
 
+    # Every secret below is optional. Without them the offline suite still
+    # runs in full and the evals, which call real models, skip themselves —
+    # so a fork or a fresh clone reports honestly instead of failing on
+    # configuration. Add them as repository secrets to run the evals too.
     - name: Run tests
       env:
         LIVEKIT_URL: ${{ secrets.LIVEKIT_URL }}
         LIVEKIT_API_KEY: ${{ secrets.LIVEKIT_API_KEY }}
         LIVEKIT_API_SECRET: ${{ secrets.LIVEKIT_API_SECRET }}
+        DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+        CARTESIA_API_KEY: ${{ secrets.CARTESIA_API_KEY }}
+        ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
+        GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
       run: uv run pytest -v

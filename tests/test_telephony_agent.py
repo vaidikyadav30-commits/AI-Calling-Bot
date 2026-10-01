@@ -27,6 +27,11 @@ from ai_caller.telephony.models import DialInfo, Direction
 
 def _judge_llm() -> llm.LLM:
     settings = Settings.from_env().llm
+    # A real model call needs a real key. Skipping without one lets a
+    # credential-less checkout run the offline suite instead of failing on
+    # configuration; see the same guard in tests/test_agent.py.
+    if not settings.api_key:
+        pytest.skip("DEEPSEEK_API_KEY is not set, so the judge model is unavailable.")
     # Temperature 0 so a judgement doesn't flip between runs.
     return build_llm(replace(settings, temperature=0.0))
 
