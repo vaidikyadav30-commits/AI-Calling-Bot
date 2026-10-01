@@ -75,6 +75,34 @@ def test_server_registers_under_the_configured_agent_name():
     assert create_server(SETTINGS)._agent_name == "test-agent"
 
 
+def test_idle_pool_is_set_explicitly_not_inferred_from_cpus():
+    """LiveKit sizes the warm pool from the CPU count it can see.
+
+    A container usually sees the host's cores, so a worker with 512 MB asks
+    for 16 job processes at ~220 MB each and the kernel SIGKILLs them
+    mid-call — visible only as `exit code -9`, with the caller hearing
+    silence. The pool must therefore come from settings, never from the host.
+    """
+    from dataclasses import replace
+
+    from ai_caller.config import WorkerSettings
+
+    server = create_server(replace(SETTINGS, worker=WorkerSettings(idle_processes=2)))
+
+    assert server._num_idle_processes == 2
+
+
+def test_idle_pool_default_fits_a_small_container():
+    """One warm process answers the next call without a ~2s import stall.
+
+    Two would not fit beside the worker in 512 MB, and zero would make every
+    caller wait for a cold start.
+    """
+    from ai_caller.config import WorkerSettings
+
+    assert WorkerSettings().idle_processes == 1
+
+
 def test_prewarm_is_module_level():
     """setup_fnc crosses the same process boundary as the entrypoint."""
     from ai_caller.session import prewarm

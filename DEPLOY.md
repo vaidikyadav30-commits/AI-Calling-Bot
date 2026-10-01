@@ -78,6 +78,24 @@ AGENT_NAME=my-agent
 by that name and the worker registers under it; a mismatch is a room the agent
 never joins, which presents as silence rather than an error.
 
+Agent service, if its container is small (512 MB or so):
+
+```
+AGENT_IDLE_PROCESSES=0
+```
+
+Each warm job process is a full copy of the agent — every import plus the
+prewarmed integrations, about 220 MB. LiveKit sizes that pool from the CPU
+count it can see, and a container usually sees the host's, so the default can
+reserve gigabytes. When the container runs out, the kernel kills the job
+*while the call is connecting*: the caller hears silence and the only evidence
+is `process exited with non-zero exit code -9`.
+
+`0` keeps memory at roughly one worker plus one job and costs about two
+seconds of cold start on the first call. `1` answers instantly but needs room
+for two job processes, because the pool refills as soon as a call takes one.
+Check the service's **Metrics** tab before raising it.
+
 Optional, only if you use them:
 
 ```
@@ -180,6 +198,23 @@ unaffected.
 Then open the URL and talk to the agent. If the page loads but the agent never
 speaks, check the `agent` service logs for `registered worker` — the browser
 and the worker must agree on `AGENT_NAME`.
+
+## When a call connects to silence
+
+The caller hears nothing in every one of these cases, so the agent log is the
+only thing that tells them apart. Read it from the top of the call.
+
+| In the agent log | Cause |
+|---|---|
+| `process exited with non-zero exit code -9` | Out of memory. The kernel killed the job mid-call. Set `AGENT_IDLE_PROCESSES=0`, or give the service more RAM |
+| `Can't pickle local object` | The job entrypoint became a closure again. It must stay module-level; see `AGENTS.md` and `tests/test_session.py` |
+| `missing credentials in the environment` | A required key is absent on the **agent** service. Each service has its own variables; they are not shared |
+| no `received job request` at all | No worker is registered under `AGENT_NAME`, or the name differs from what the dispatch rule asks for |
+| `received job request` then nothing | The job started but stalled — check for a provider error (STT/TTS/LLM key) right after it |
+
+If the log shows nothing at all for the call, it never reached the agent.
+Check `/api/telephony/inbound` on the web service: `ready: true` means the
+number is routed to a rule that dispatches this agent.
 
 ## Running locally
 

@@ -384,6 +384,38 @@ class TelephonySettings:
 
 
 @dataclass(frozen=True)
+class WorkerSettings:
+    """How much the worker keeps warm, and how hard it may push the box.
+
+    Each idle job process is a full copy of the agent — every import plus the
+    prewarmed integrations, measured at ~220 MB. LiveKit sizes this pool from
+    the CPU count, which is right for a dedicated machine and fatal in a
+    container: a 16-core host asks for 16 processes, ~3.5 GB, and the kernel
+    SIGKILLs them. All the caller hears is silence, and the only evidence is
+    ``process exited with non-zero exit code -9``.
+
+    So the pool is set explicitly here rather than inferred. One warm process
+    answers the next call without paying the ~2s import cost, which is the
+    cost that matters when someone is already on the line.
+    """
+
+    # Job processes kept ready. 0 trades first-call latency for ~220 MB.
+    idle_processes: int = 1
+    # Per-job ceiling. Above it LiveKit ends the job itself and says why,
+    # instead of leaving the kernel to kill it with no explanation. 0 is off.
+    job_memory_limit_mb: int = 0
+    job_memory_warn_mb: int = 500
+
+    @staticmethod
+    def from_env() -> WorkerSettings:
+        return WorkerSettings(
+            idle_processes=_env_int("AGENT_IDLE_PROCESSES", 1),
+            job_memory_limit_mb=_env_int("AGENT_JOB_MEMORY_LIMIT_MB", 0),
+            job_memory_warn_mb=_env_int("AGENT_JOB_MEMORY_WARN_MB", 500),
+        )
+
+
+@dataclass(frozen=True)
 class WebSettings:
     """The browser-facing half of the app.
 
@@ -426,6 +458,7 @@ class Settings:
     rag: RagSettings = field(default_factory=RagSettings)
     telephony: TelephonySettings = field(default_factory=TelephonySettings)
     web: WebSettings = field(default_factory=WebSettings)
+    worker: WorkerSettings = field(default_factory=WorkerSettings)
 
     @staticmethod
     def from_env() -> Settings:
@@ -439,6 +472,7 @@ class Settings:
             rag=RagSettings.from_env(),
             telephony=TelephonySettings.from_env(),
             web=WebSettings.from_env(),
+            worker=WorkerSettings.from_env(),
         )
 
 

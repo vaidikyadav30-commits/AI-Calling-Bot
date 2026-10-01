@@ -188,7 +188,17 @@ async def run_session(ctx: JobContext, settings: Settings) -> None:
 def create_server(settings: Settings | None = None) -> AgentServer:
     """Build the AgentServer and register the session handler."""
     settings = settings or Settings.from_env()
-    server = AgentServer(setup_fnc=prewarm)
+
+    # Size the warm pool explicitly. LiveKit's default scales with the CPU
+    # count it can see, and a container usually sees the host's — so a worker
+    # given 512 MB cheerfully reserves several gigabytes of idle job
+    # processes and the kernel kills them mid-call. See WorkerSettings.
+    server = AgentServer(
+        setup_fnc=prewarm,
+        num_idle_processes=settings.worker.idle_processes,
+        job_memory_limit_mb=settings.worker.job_memory_limit_mb,
+        job_memory_warn_mb=settings.worker.job_memory_warn_mb,
+    )
 
     # partial() rather than a closure: both the function and the bound
     # Settings pickle, so the whole entrypoint survives the trip to a job
