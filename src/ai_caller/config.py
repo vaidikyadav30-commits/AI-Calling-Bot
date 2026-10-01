@@ -136,9 +136,15 @@ class TTSSettings:
 
     # Cartesia, used when provider="cartesia".
     cartesia_api_key: str = ""
-    cartesia_model: str = "sonic-2"
-    # Nandi - Poised Concierge. `--list-voices` on the Cartesia API shows more.
-    cartesia_voice: str = "33d406dd-ff6f-4be7-a7f5-8b1ba183b3e4"
+    # sonic-3, not sonic-2: sonic-2 is sunsetted for every language but
+    # English and rejects the rest outright ("Model sunsetted" for Hindi,
+    # "Invalid language for model" for Arabic). sonic-3 serves all three.
+    cartesia_model: str = "sonic-3"
+    # Sagar - Helpful Friend. Native Hindi (hi-IN) with British and American
+    # English accents, so English comes out Indian-accented — which is the
+    # right register for callers in Dubai. Browse others with
+    # GET https://api.cartesia.ai/voices/
+    cartesia_voice: str = "6303e5fb-a0a7-48f9-bb1a-dd42c216dc5d"
 
     @property
     def uses_cartesia(self) -> bool:
@@ -152,9 +158,9 @@ class TTSSettings:
             model=_env("ELEVENLABS_MODEL") or "eleven_flash_v2_5",
             voice_id=_env("ELEVENLABS_VOICE_ID") or "EXAVITQu4vr4xnSDxMaL",
             cartesia_api_key=_env("CARTESIA_API_KEY"),
-            cartesia_model=_env("CARTESIA_TTS_MODEL") or "sonic-2",
+            cartesia_model=_env("CARTESIA_TTS_MODEL") or "sonic-3",
             cartesia_voice=_env("CARTESIA_VOICE_ID")
-            or "33d406dd-ff6f-4be7-a7f5-8b1ba183b3e4",
+            or "6303e5fb-a0a7-48f9-bb1a-dd42c216dc5d",
         )
 
 
